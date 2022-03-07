@@ -1,0 +1,35 @@
+# vim
+*.swp
+*.swo
+*.swn
+.vimrc
+
+# Jetbrains
+.idea/*
+.gradle
+*.iml
+cmake-build-*
+.clion.source.upload.marker
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+*.pyc
+__pycache__
+.ipynb_checkpoints
+.vscode
+
+# Distribution / packaging
+eggs/
+.eggs/
+*.egg-info/
+dist/*
+build*
+*.o
+*.so
+install/*
+
+# Generated Files
+*/data/*
+*.DS_Store
