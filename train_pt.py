@@ -55,8 +55,9 @@ def main():
   parser.add_argument("--profile", '-p', action='store_true')
   parser.add_argument("--num_steps", "-n", default=300, type=int)
   parser.add_argument("--batch_size", "-b", default=1, type=int)
-  parser.add_argument("--epochs", "-e", default=5, type=int)
-  parser.add_argument("--profiling_stop", "-s", default=2, type=int)
+  parser.add_argument("--epochs", "-e", default=6, type=int)
+  parser.add_argument("--profiling_stop", "-s", default=3, type=int)
+  parser.add_argument("--profiling_start", "-S", default=1, type=int)
   args, unk = parser.parse_known_args()
 
   sampler = None
@@ -108,9 +109,11 @@ def main():
 
       import cupti_bug
       CCapture = cupti_bug.CuptiCapture.instance()
-      CCapture.start_profiling()
-      prof_running=True
       for epoch in range(args.epochs):
+        if epoch>=args.profiling_start and epoch<=args.profiling_stop:
+          if not prof_running:
+            CCapture.start_profiling()
+            prof_running=True
         if world_size > 1:
           sampler.set_epoch(epoch)
         tstart = time.perf_counter()
@@ -168,5 +171,10 @@ def main():
               time.perf_counter() - tstart)
   print(f"Resource utilization rank[ {local_rank} ]=",
         dumpru(resource.getrusage(resource.RUSAGE_SELF),lastrss))
-
+  message=[]
+  message.append(f"Memory usage before framework starts and cupti is imported = {lastrss[0][1]/(1024*1024):.3f} MB")
+  for i,l in enumerate(lastrss[1:]):
+    ac="RUNNING" if l[0] else "not running"
+    message.append(f"Memory usage at the end of epoch {i} while cupti was {ac} ={l[1]/(1024*1024):.3f} MB. Change from previous = {(l[1]-lastrss[i][1])/(1024*1024):.3f} MB")
+  print(f"Rank {local_rank} memory statistics: ","\n".join(message))
 main()

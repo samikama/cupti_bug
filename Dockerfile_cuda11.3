@@ -1,0 +1,16 @@
+FROM nvcr.io/nvidia/cuda:11.3.1-cudnn8-runtime-ubuntu18.04
+ARG UID=1000
+ARG GID=1000
+RUN apt update && apt install -y wget libiberty-dev binutils-dev libunwind-dev sudo gdb cuda-nvcc-11-3 cuda-cupti-dev-11-3 python3.8-minimal python3.8-dev build-essential ca-certificates \
+  && wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - |  tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null && \
+  echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ bionic main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null && \
+  apt update && apt install -y cmake cmake-curses-gui libiberty-dev binutils-dev libunwind-dev python3.8-minimal python3.8-dev python3-distutils && \
+  ln -s /usr/bin/python3.8 /usr/bin/python && wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py && rm get-pip.py && \
+  pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113 && \
+  rm -rf /var/lib/apt/lists/* && groupadd -g ${GID} cuptibug &&  useradd -u ${UID} -g ${GID} -G video,cuptibug,sudo cuptibug && echo "cuptibug ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+COPY . /CuptiBug
+RUN cd /CuptiBug && chown -R cuptibug:cuptibug . && python setup.py clean && CUDAToolkit_ROOT=/usr/local/cuda-11.3/ pip install --use-feature=in-tree-build . && pip install psutil
+VOLUME ["workspace"]
+WORKDIR /workspace
+ENTRYPOINT ["python", "-m","torch.distributed.launch","--nproc_per_node","8","/CuptiBug/train_pt.py" ]
+CMD ["-n", "1000", "-b", "32", "-p"]
